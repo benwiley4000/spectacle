@@ -189,9 +189,12 @@ function (_Component) {
     key: "render",
     value: function render() {
       var _this$props = this.props,
+          highlightLines = _this$props.highlightLines,
           previewBackgroundColor = _this$props.previewBackgroundColor,
           _this$props$scope = _this$props.scope,
           scope = _this$props$scope === void 0 ? {} : _this$props$scope,
+          _this$props$showLineN = _this$props.showLineNumbers,
+          showLineNumbers = _this$props$showLineN === void 0 ? false : _this$props$showLineN,
           _this$props$theme = _this$props.theme,
           theme = _this$props$theme === void 0 ? 'dark' : _this$props$theme,
           transformCode = _this$props.transformCode;
@@ -221,7 +224,9 @@ function (_Component) {
         className: className,
         syntaxStyles: this.context.styles.components.syntax,
         prismTheme: this.context.styles.prism[useDarkTheme ? 'dark' : 'light'],
-        onChange: this.onEditorChange
+        onChange: this.onEditorChange,
+        highlightLines: highlightLines,
+        showLineNumbers: showLineNumbers
       }))));
     }
   }]);
@@ -235,10 +240,12 @@ ComponentPlayground.contextTypes = {
 };
 ComponentPlayground.propTypes = {
   code: PropTypes.string,
+  highlightLines: PropTypes.string,
   onCodeChange: PropTypes.func,
   onError: PropTypes.func,
   previewBackgroundColor: PropTypes.string,
   scope: PropTypes.object,
+  showLineNumbers: PropTypes.bool,
   theme: PropTypes.oneOf(['dark', 'light', 'external']),
   transformCode: PropTypes.func
 };

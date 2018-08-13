@@ -51297,6 +51297,217 @@ Prism.languages.yaml = {
 
 /***/ }),
 
+/***/ "./node_modules/prismjs/plugins/line-highlight/prism-line-highlight.js":
+/*!*****************************************************************************!*\
+  !*** ./node_modules/prismjs/plugins/line-highlight/prism-line-highlight.js ***!
+  \*****************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+(function(){
+
+if (typeof self === 'undefined' || !self.Prism || !self.document || !document.querySelector) {
+	return;
+}
+
+function $$(expr, con) {
+	return Array.prototype.slice.call((con || document).querySelectorAll(expr));
+}
+
+function hasClass(element, className) {
+  className = " " + className + " ";
+  return (" " + element.className + " ").replace(/[\n\t]/g, " ").indexOf(className) > -1
+}
+
+// Some browsers round the line-height, others don't.
+// We need to test for it to position the elements properly.
+var isLineHeightRounded = (function() {
+	var res;
+	return function() {
+		if(typeof res === 'undefined') {
+			var d = document.createElement('div');
+			d.style.fontSize = '13px';
+			d.style.lineHeight = '1.5';
+			d.style.padding = 0;
+			d.style.border = 0;
+			d.innerHTML = '&nbsp;<br />&nbsp;';
+			document.body.appendChild(d);
+			// Browsers that round the line-height should have offsetHeight === 38
+			// The others should have 39.
+			res = d.offsetHeight === 38;
+			document.body.removeChild(d);
+		}
+		return res;
+	}
+}());
+
+function highlightLines(pre, lines, classes) {
+	var ranges = lines.replace(/\s+/g, '').split(','),
+	    offset = +pre.getAttribute('data-line-offset') || 0;
+
+	var parseMethod = isLineHeightRounded() ? parseInt : parseFloat;
+	var lineHeight = parseMethod(getComputedStyle(pre).lineHeight);
+
+	for (var i=0, range; range = ranges[i++];) {
+		range = range.split('-');
+					
+		var start = +range[0],
+		    end = +range[1] || start;
+		
+		var line = document.createElement('div');
+		
+		line.textContent = Array(end - start + 2).join(' \n');
+		line.setAttribute('aria-hidden', 'true');
+		line.className = (classes || '') + ' line-highlight';
+
+		//if the line-numbers plugin is enabled, then there is no reason for this plugin to display the line numbers
+		if(!hasClass(pre, 'line-numbers')) {
+			line.setAttribute('data-start', start);
+
+			if(end > start) {
+				line.setAttribute('data-end', end);
+			}
+		}
+
+		line.style.top = (start - offset - 1) * lineHeight + 'px';
+
+		//allow this to play nicely with the line-numbers plugin
+		if(hasClass(pre, 'line-numbers')) {
+			//need to attack to pre as when line-numbers is enabled, the code tag is relatively which screws up the positioning
+			pre.appendChild(line);
+		} else {
+			(pre.querySelector('code') || pre).appendChild(line);
+		}
+	}
+}
+
+function applyHash() {
+	var hash = location.hash.slice(1);
+	
+	// Remove pre-existing temporary lines
+	$$('.temporary.line-highlight').forEach(function (line) {
+		line.parentNode.removeChild(line);
+	});
+	
+	var range = (hash.match(/\.([\d,-]+)$/) || [,''])[1];
+	
+	if (!range || document.getElementById(hash)) {
+		return;
+	}
+	
+	var id = hash.slice(0, hash.lastIndexOf('.')),
+	    pre = document.getElementById(id);
+
+	if (!pre) {
+		return;
+	}
+	
+	if (!pre.hasAttribute('data-line')) {
+		pre.setAttribute('data-line', '');
+	}
+
+	highlightLines(pre, range, 'temporary ');
+
+	document.querySelector('.temporary.line-highlight').scrollIntoView();
+}
+
+var fakeTimer = 0; // Hack to limit the number of times applyHash() runs
+
+Prism.hooks.add('complete', function(env) {
+	var pre = env.element.parentNode;
+	var lines = pre && pre.getAttribute('data-line');
+	
+	if (!pre || !lines || !/pre/i.test(pre.nodeName)) {
+		return;
+	}
+	
+	clearTimeout(fakeTimer);
+	
+	$$('.line-highlight', pre).forEach(function (line) {
+		line.parentNode.removeChild(line);
+	});
+	
+	highlightLines(pre, lines);
+	
+	fakeTimer = setTimeout(applyHash, 1);
+});
+
+if(window.addEventListener) {
+	window.addEventListener('hashchange', applyHash);
+}
+
+})();
+
+
+/***/ }),
+
+/***/ "./node_modules/prismjs/plugins/line-numbers/prism-line-numbers.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/prismjs/plugins/line-numbers/prism-line-numbers.js ***!
+  \*************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+(function() {
+
+if (typeof self === 'undefined' || !self.Prism || !self.document) {
+	return;
+}
+
+Prism.hooks.add('complete', function (env) {
+	if (!env.code) {
+		return;
+	}
+
+	// works only for <code> wrapped inside <pre> (not inline)
+	var pre = env.element.parentNode;
+	var clsReg = /\s*\bline-numbers\b\s*/;
+	if (
+		!pre || !/pre/i.test(pre.nodeName) ||
+			// Abort only if nor the <pre> nor the <code> have the class
+		(!clsReg.test(pre.className) && !clsReg.test(env.element.className))
+	) {
+		return;
+	}
+
+	if (env.element.querySelector(".line-numbers-rows")) {
+		// Abort if line numbers already exists
+		return;
+	}
+
+	if (clsReg.test(env.element.className)) {
+		// Remove the class "line-numbers" from the <code>
+		env.element.className = env.element.className.replace(clsReg, '');
+	}
+	if (!clsReg.test(pre.className)) {
+		// Add the class "line-numbers" to the <pre>
+		pre.className += ' line-numbers';
+	}
+
+	var match = env.code.match(/\n(?!$)/g);
+	var linesNum = match ? match.length + 1 : 1;
+	var lineNumbersWrapper;
+
+	var lines = new Array(linesNum + 1);
+	lines = lines.join('<span></span>');
+
+	lineNumbersWrapper = document.createElement('span');
+	lineNumbersWrapper.setAttribute('aria-hidden', 'true');
+	lineNumbersWrapper.className = 'line-numbers-rows';
+	lineNumbersWrapper.innerHTML = lines;
+
+	if (pre.hasAttribute('data-start')) {
+		pre.style.counterReset = 'linenumber ' + (parseInt(pre.getAttribute('data-start'), 10) - 1);
+	}
+
+	env.element.appendChild(lineNumbersWrapper);
+
+});
+
+}());
+
+/***/ }),
+
 /***/ "./node_modules/process/browser.js":
 /*!*****************************************!*\
   !*** ./node_modules/process/browser.js ***!
@@ -51738,17 +51949,23 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var prismjs_components_prism_markup__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(prismjs_components_prism_markup__WEBPACK_IMPORTED_MODULE_3__);
 /* harmony import */ var prismjs_components_prism_jsx__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! prismjs/components/prism-jsx */ "./node_modules/prismjs/components/prism-jsx.js");
 /* harmony import */ var prismjs_components_prism_jsx__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(prismjs_components_prism_jsx__WEBPACK_IMPORTED_MODULE_4__);
-/* harmony import */ var unescape__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! unescape */ "./node_modules/unescape/index.js");
-/* harmony import */ var unescape__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(unescape__WEBPACK_IMPORTED_MODULE_5__);
-/* harmony import */ var dom_iterator__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! dom-iterator */ "./node_modules/dom-iterator/index.js");
-/* harmony import */ var dom_iterator__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(dom_iterator__WEBPACK_IMPORTED_MODULE_6__);
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! react */ "react");
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_7__);
-/* harmony import */ var buble__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! buble */ "./node_modules/buble/dist/buble-browser.es.js");
-/* harmony import */ var core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! core-js/fn/object/assign */ "./node_modules/core-js/fn/object/assign.js");
-/* harmony import */ var core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_9___default = /*#__PURE__*/__webpack_require__.n(core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_9__);
-/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! prop-types */ "prop-types");
-/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_10___default = /*#__PURE__*/__webpack_require__.n(prop_types__WEBPACK_IMPORTED_MODULE_10__);
+/* harmony import */ var prismjs_plugins_line_numbers_prism_line_numbers__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! prismjs/plugins/line-numbers/prism-line-numbers */ "./node_modules/prismjs/plugins/line-numbers/prism-line-numbers.js");
+/* harmony import */ var prismjs_plugins_line_numbers_prism_line_numbers__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(prismjs_plugins_line_numbers_prism_line_numbers__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var prismjs_plugins_line_highlight_prism_line_highlight__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! prismjs/plugins/line-highlight/prism-line-highlight */ "./node_modules/prismjs/plugins/line-highlight/prism-line-highlight.js");
+/* harmony import */ var prismjs_plugins_line_highlight_prism_line_highlight__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(prismjs_plugins_line_highlight_prism_line_highlight__WEBPACK_IMPORTED_MODULE_6__);
+/* harmony import */ var unescape__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! unescape */ "./node_modules/unescape/index.js");
+/* harmony import */ var unescape__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(unescape__WEBPACK_IMPORTED_MODULE_7__);
+/* harmony import */ var dom_iterator__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! dom-iterator */ "./node_modules/dom-iterator/index.js");
+/* harmony import */ var dom_iterator__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(dom_iterator__WEBPACK_IMPORTED_MODULE_8__);
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_9___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_9__);
+/* harmony import */ var buble__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! buble */ "./node_modules/buble/dist/buble-browser.es.js");
+/* harmony import */ var core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! core-js/fn/object/assign */ "./node_modules/core-js/fn/object/assign.js");
+/* harmony import */ var core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_11___default = /*#__PURE__*/__webpack_require__.n(core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_11__);
+/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! prop-types */ "prop-types");
+/* harmony import */ var prop_types__WEBPACK_IMPORTED_MODULE_12___default = /*#__PURE__*/__webpack_require__.n(prop_types__WEBPACK_IMPORTED_MODULE_12__);
+
+
 
 
 
@@ -51788,7 +52005,7 @@ var normalizeHtml = function normalizeHtml(html) {
 };
 
 var htmlToPlain = function htmlToPlain(html) {
-  return unescape__WEBPACK_IMPORTED_MODULE_5___default()(html.replace(/<br>/gm, '\n').replace(/<\/?[^>]*>/gm, ''));
+  return unescape__WEBPACK_IMPORTED_MODULE_7___default()(html.replace(/<br>/gm, '\n').replace(/<\/?[^>]*>/gm, ''));
 };
 
 function position(el, pos) {
@@ -51814,7 +52031,7 @@ function position(el, pos) {
   var setSelection = pos.end && pos.end !== pos.start;
   var length = 0;
   var range = document.createRange();
-  var it = dom_iterator__WEBPACK_IMPORTED_MODULE_6___default()(el).select(Node.TEXT_NODE).revisit(false);
+  var it = dom_iterator__WEBPACK_IMPORTED_MODULE_8___default()(el).select(Node.TEXT_NODE).revisit(false);
   var next;
   var startindex;
   var start = pos.start > el.textContent.length ? el.textContent.length : pos.start;
@@ -52173,16 +52390,19 @@ var Editor = function (_Component) {
         contentEditable = _props.contentEditable,
         className = _props.className,
         style = _props.style,
+        showLineNumbers = _props.showLineNumbers,
+        highlightLines = _props.highlightLines,
         code = _props.code,
         ignoreTabKey = _props.ignoreTabKey,
         language = _props.language,
-        rest = objectWithoutProperties(_props, ['contentEditable', 'className', 'style', 'code', 'ignoreTabKey', 'language']);
+        rest = objectWithoutProperties(_props, ['contentEditable', 'className', 'style', 'showLineNumbers', 'highlightLines', 'code', 'ignoreTabKey', 'language']);
     var html = this.state.html;
 
 
-    return react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement('pre', _extends({}, rest, {
+    return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement('pre', _extends({}, rest, {
       ref: this.onRef,
-      className: cn('prism-code', className),
+      className: cn('prism-code', showLineNumbers && 'line-numbers', className),
+      'data-line': highlightLines,
       style: style,
       spellCheck: 'false',
       contentEditable: contentEditable,
@@ -52196,14 +52416,14 @@ var Editor = function (_Component) {
   };
 
   return Editor;
-}(react__WEBPACK_IMPORTED_MODULE_7__["Component"]);
+}(react__WEBPACK_IMPORTED_MODULE_9__["Component"]);
 
 Editor.defaultProps = {
   contentEditable: true,
   language: 'jsx'
 };
 
-var _poly = { assign: core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_9___default.a };
+var _poly = { assign: core_js_fn_object_assign__WEBPACK_IMPORTED_MODULE_11___default.a };
 
 var opts = {
   objectAssign: '_poly.assign',
@@ -52214,7 +52434,7 @@ var opts = {
 };
 
 var transform$1 = (function (code) {
-  return Object(buble__WEBPACK_IMPORTED_MODULE_8__["transform"])(code, opts).code;
+  return Object(buble__WEBPACK_IMPORTED_MODULE_10__["transform"])(code, opts).code;
 });
 
 var errorBoundary = function errorBoundary(Element, errorCallback) {
@@ -52231,11 +52451,11 @@ var errorBoundary = function errorBoundary(Element, errorCallback) {
     };
 
     ErrorBoundary.prototype.render = function render() {
-      return typeof Element === 'function' ? react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(Element, null) : Element;
+      return typeof Element === 'function' ? react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(Element, null) : Element;
     };
 
     return ErrorBoundary;
-  }(react__WEBPACK_IMPORTED_MODULE_7___default.a.Component);
+  }(react__WEBPACK_IMPORTED_MODULE_9___default.a.Component);
 };
 
 var evalCode = function evalCode(code, scope) {
@@ -52244,7 +52464,7 @@ var evalCode = function evalCode(code, scope) {
     return scope[key];
   });
   var res = new (Function.prototype.bind.apply(Function, [null].concat(['_poly', 'React'], scopeKeys, [code])))();
-  return res.apply(undefined, [_poly, react__WEBPACK_IMPORTED_MODULE_7___default.a].concat(scopeValues));
+  return res.apply(undefined, [_poly, react__WEBPACK_IMPORTED_MODULE_9___default.a].concat(scopeValues));
 };
 
 var generateElement = function generateElement(_ref, errorCallback) {
@@ -52281,21 +52501,21 @@ var renderElementAsync = function renderElementAsync(_ref2, resultCallback, erro
 
 var css = "\n.prism-code {\n  display: block;\n  white-space: pre;\n\n  background-color: #1D1F21;\n  color: #C5C8C6;\n\n  padding: 0.5rem;\n  margin: 0;\n\n  box-sizing: border-box;\n  vertical-align: baseline;\n  outline: none;\n  text-shadow: none;\n  -webkit-hyphens: none;\n  -ms-hyphens: none;\n  hyphens: none;\n  word-wrap: normal;\n  word-break: normal;\n  text-align: left;\n  word-spacing: normal;\n  -moz-tab-size: 2;\n  -o-tab-size: 2;\n  tab-size: 2;\n}\n\n.token.comment,\n.token.prolog,\n.token.doctype,\n.token.cdata {\n  color: hsl(30, 20%, 50%);\n}\n\n.token.punctuation {\n  opacity: .7;\n}\n\n.namespace {\n  opacity: .7;\n}\n\n.token.property,\n.token.tag,\n.token.boolean,\n.token.number,\n.token.constant,\n.token.symbol {\n  color: hsl(350, 40%, 70%);\n}\n\n.token.selector,\n.token.attr-name,\n.token.string,\n.token.char,\n.token.builtin,\n.token.inserted {\n  color: hsl(75, 70%, 60%);\n}\n\n.token.operator,\n.token.entity,\n.token.url,\n.language-css .token.string,\n.style .token.string,\n.token.variable {\n  color: hsl(40, 90%, 60%);\n}\n\n.token.atrule,\n.token.attr-value,\n.token.keyword {\n  color: hsl(350, 40%, 70%);\n}\n\n.token.regex,\n.token.important {\n  color: #e90;\n}\n\n.token.important,\n.token.bold {\n  font-weight: bold;\n}\n.token.italic {\n  font-style: italic;\n}\n\n.token.entity {\n  cursor: help;\n}\n\n.token.deleted {\n  color: red;\n}\n";
 
-var prismStyling = react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement('style', { dangerouslySetInnerHTML: { __html: css } });
+var prismStyling = react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement('style', { dangerouslySetInnerHTML: { __html: css } });
 
 var Style = (function () {
   return prismStyling;
 });
 
 var LiveContextTypes = {
-  live: prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.shape({
-    code: prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.string,
-    error: prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.string,
+  live: prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.shape({
+    code: prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.string,
+    error: prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.string,
 
-    onError: prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.func,
-    onChange: prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.func,
+    onError: prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.func,
+    onChange: prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.func,
 
-    element: prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.oneOfType([prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.string, prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.number, prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.element, prop_types__WEBPACK_IMPORTED_MODULE_10___default.a.func])
+    element: prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.oneOfType([prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.string, prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.number, prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.element, prop_types__WEBPACK_IMPORTED_MODULE_12___default.a.func])
   })
 };
 
@@ -52404,18 +52624,18 @@ var LiveProvider = function (_Component) {
         rest = objectWithoutProperties(_props2, ['children', 'className', 'code', 'mountStylesheet', 'noInline', 'transformCode', 'scope']);
 
 
-    return react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(
+    return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(
       'div',
       _extends({
         className: cn('react-live', className)
       }, rest),
-      mountStylesheet && react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(Style, null),
+      mountStylesheet && react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(Style, null),
       children
     );
   };
 
   return LiveProvider;
-}(react__WEBPACK_IMPORTED_MODULE_7__["Component"]);
+}(react__WEBPACK_IMPORTED_MODULE_9__["Component"]);
 
 LiveProvider.childContextTypes = LiveContextTypes;
 LiveProvider.defaultProps = {
@@ -52426,7 +52646,7 @@ LiveProvider.defaultProps = {
 
 var LiveEditor = function LiveEditor(props, _ref) {
   var live = _ref.live;
-  return react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(Editor, _extends({}, props, {
+  return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(Editor, _extends({}, props, {
     code: live.code,
     onChange: function onChange(code) {
       live.onChange(code);
@@ -52444,7 +52664,7 @@ var LiveError = function LiveError(_ref, _ref2) {
   var live = _ref2.live;
   var className = _ref.className,
       rest = objectWithoutProperties(_ref, ['className']);
-  return live.error ? react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(
+  return live.error ? react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(
     'div',
     _extends({}, rest, {
       className: cn('react-live-error', className)
@@ -52462,12 +52682,12 @@ var LivePreview = function LivePreview(_ref, _ref2) {
 
   var Element = element;
 
-  return react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(
+  return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(
     'div',
     _extends({}, rest, {
       className: cn('react-live-preview', className)
     }),
-    Element && react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(Element, null)
+    Element && react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(Element, null)
   );
 };
 
@@ -52485,11 +52705,11 @@ var withLive = function withLive(WrappedComponent) {
     WithLive.prototype.render = function render() {
       var live = this.context.live;
 
-      return react__WEBPACK_IMPORTED_MODULE_7___default.a.createElement(WrappedComponent, _extends({ live: live }, this.props));
+      return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(WrappedComponent, _extends({ live: live }, this.props));
     };
 
     return WithLive;
-  }(react__WEBPACK_IMPORTED_MODULE_7__["Component"]);
+  }(react__WEBPACK_IMPORTED_MODULE_9__["Component"]);
 
   WithLive.contextTypes = LiveContextTypes;
 
@@ -64401,9 +64621,12 @@ function (_Component) {
     key: "render",
     value: function render() {
       var _this$props = this.props,
+          highlightLines = _this$props.highlightLines,
           previewBackgroundColor = _this$props.previewBackgroundColor,
           _this$props$scope = _this$props.scope,
           scope = _this$props$scope === void 0 ? {} : _this$props$scope,
+          _this$props$showLineN = _this$props.showLineNumbers,
+          showLineNumbers = _this$props$showLineN === void 0 ? false : _this$props$showLineN,
           _this$props$theme = _this$props.theme,
           theme = _this$props$theme === void 0 ? 'dark' : _this$props$theme,
           transformCode = _this$props.transformCode;
@@ -64433,7 +64656,9 @@ function (_Component) {
         className: className,
         syntaxStyles: this.context.styles.components.syntax,
         prismTheme: this.context.styles.prism[useDarkTheme ? 'dark' : 'light'],
-        onChange: this.onEditorChange
+        onChange: this.onEditorChange,
+        highlightLines: highlightLines,
+        showLineNumbers: showLineNumbers
       }))));
     }
   }]);
@@ -64447,10 +64672,12 @@ ComponentPlayground.contextTypes = {
 };
 ComponentPlayground.propTypes = {
   code: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.string,
+  highlightLines: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.string,
   onCodeChange: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func,
   onError: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func,
   previewBackgroundColor: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.string,
   scope: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.object,
+  showLineNumbers: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.bool,
   theme: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOf(['dark', 'light', 'external']),
   transformCode: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func
 };

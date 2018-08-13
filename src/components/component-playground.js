@@ -207,8 +207,10 @@ class ComponentPlayground extends Component {
 
   render() {
     const {
+      highlightLines,
       previewBackgroundColor,
       scope = {},
+      showLineNumbers = false,
       theme = 'dark',
       transformCode
     } = this.props;
@@ -256,6 +258,8 @@ class ComponentPlayground extends Component {
                 this.context.styles.prism[useDarkTheme ? 'dark' : 'light']
               }
               onChange={this.onEditorChange}
+              highlightLines={highlightLines}
+              showLineNumbers={showLineNumbers}
             />
           </PlaygroundColumn>
         </PlaygroundRow>
@@ -271,10 +275,12 @@ ComponentPlayground.contextTypes = {
 
 ComponentPlayground.propTypes = {
   code: PropTypes.string,
+  highlightLines: PropTypes.string,
   onCodeChange: PropTypes.func,
   onError: PropTypes.func,
   previewBackgroundColor: PropTypes.string,
   scope: PropTypes.object,
+  showLineNumbers: PropTypes.bool,
   theme: PropTypes.oneOf(['dark', 'light', 'external']),
   transformCode: PropTypes.func
 };

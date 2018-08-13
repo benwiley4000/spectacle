@@ -52399,20 +52399,23 @@ var Editor = function (_Component) {
     var html = this.state.html;
 
 
-    return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement('pre', _extends({}, rest, {
-      ref: this.onRef,
-      className: cn('prism-code', showLineNumbers && 'line-numbers', className),
-      'data-line': highlightLines,
-      style: style,
-      spellCheck: 'false',
-      contentEditable: contentEditable,
-      onCompositionEnd: contentEditable ? this.onCompositionEnd : undefined,
-      onCompositionStart: contentEditable ? this.onCompositionStart : undefined,
-      onKeyDown: contentEditable ? this.onKeyDown : undefined,
-      onKeyUp: contentEditable ? this.onKeyUp : undefined,
-      onClick: contentEditable ? this.onClick : undefined,
-      dangerouslySetInnerHTML: { __html: html }
-    }));
+    return react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement(
+      'pre',
+      _extends({}, rest, {
+        ref: this.onRef,
+        className: cn('prism-code', showLineNumbers && 'line-numbers', className),
+        'data-line': highlightLines,
+        style: style,
+        spellCheck: 'false',
+        contentEditable: contentEditable,
+        onCompositionEnd: contentEditable ? this.onCompositionEnd : undefined,
+        onCompositionStart: contentEditable ? this.onCompositionStart : undefined,
+        onKeyDown: contentEditable ? this.onKeyDown : undefined,
+        onKeyUp: contentEditable ? this.onKeyUp : undefined,
+        onClick: contentEditable ? this.onClick : undefined
+      }),
+      react__WEBPACK_IMPORTED_MODULE_9___default.a.createElement('code', { dangerouslySetInnerHTML: { __html: html } })
+    );
   };
 
   return Editor;
